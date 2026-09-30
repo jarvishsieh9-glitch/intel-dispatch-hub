@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>情報儀表板</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <h1 id="pageTitle">情報儀表板</h1>
+      <span class="tag" id="pageTag">Intel Dashboard</span>
+    </div>
+    <div class="badge">僅收錄可追溯來源連結的情報</div>
+  </header>
+
+  <div id="loading" class="card"><p class="empty"><span class="spinner"></span>載入中…</p></div>
+  <div id="content" style="display:none;">
+
+    <div class="card" id="statusCard">
+      <h2 style="margin-bottom:14px;">狀態</h2>
+      <p class="hint" id="statusText" style="margin-bottom:16px;"></p>
+      <button class="secondary" id="runNowBtn">立即更新（首次使用請先按這裡）</button>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom:14px;">每日總結</h2>
+      <pre class="ai-summary" id="summaryBox">尚無資料。</pre>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom:14px;">情報條目</h2>
+      <div id="entriesBox"><p class="empty">尚無資料。</p></div>
+    </div>
+
+  </div>
+
+  <p class="footline">每筆情報寫入前皆須通過來源連結檢查 — 無連結，不上稿。</p>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const id = params.get("id");
+const loadingEl = document.getElementById("loading");
+const contentEl = document.getElementById("content");
+const statusText = document.getElementById("statusText");
+const summaryBox = document.getElementById("summaryBox");
+const entriesBox = document.getElementById("entriesBox");
+const runNowBtn = document.getElementById("runNowBtn");
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function renderEntries(entries) {
+  if (!entries || !entries.length) {
+    entriesBox.innerHTML = '<p class="empty">今日尚無具備有效來源連結的情報。</p>';
+    return;
+  }
+  entriesBox.innerHTML = entries.map((it) => `
+    <div class="entry">
+      <div class="meta">${escapeHtml(it.sourceType)} · ${escapeHtml(it.group || "")}</div>
+      <div class="title">${escapeHtml(it.title)}</div>
+      <div class="summary">${escapeHtml((it.summary || "").replace(/<[^>]+>/g, "").slice(0, 200))}</div>
+      <a class="src" href="${escapeHtml(it.link)}" target="_blank" rel="noopener">來源連結 ↗</a>
+    </div>
+  `).join("");
+}
+
+function render(data) {
+  const sub = data.subscriber;
+  document.getElementById("pageTitle").textContent = `${sub.industry} 情報儀表板`;
+  document.getElementById("pageTag").textContent = sub.role;
+
+  if (data.intel) {
+    statusText.textContent = `上次更新：${new Date(data.intel.generatedAt).toLocaleString("zh-TW")} · 共 ${data.intel.entries.length} 筆情報`;
+    summaryBox.textContent = data.intel.summary || "尚無摘要。";
+    renderEntries(data.intel.entries);
+  } else {
+    statusText.textContent = "尚未執行過抓取。系統會在每天台灣時間早上 7:00 自動更新，您也可以按下方按鈕立即產生第一份結果。";
+  }
+
+  loadingEl.style.display = "none";
+  contentEl.style.display = "block";
+}
+
+async function load() {
+  if (!id) {
+    loadingEl.innerHTML = '<p class="empty">網址缺少訂閱 ID，請重新從訂閱表單取得您的專屬連結。</p>';
+    return;
+  }
+  try {
+    const resp = await fetch(`/api/get-dashboard?id=${encodeURIComponent(id)}`);
+    if (!resp.ok) throw new Error("not found");
+    const data = await resp.json();
+    render(data);
+  } catch (err) {
+    loadingEl.innerHTML = '<p class="empty">找不到此訂閱，連結可能有誤。</p>';
+  }
+}
+
+runNowBtn.addEventListener("click", async () => {
+  runNowBtn.disabled = true;
+  runNowBtn.innerHTML = '<span class="spinner"></span>更新中，約需 10-30 秒…';
+  try {
+    const resp = await fetch("/api/run-now", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    if (!resp.ok) throw new Error("run failed");
+    const intel = await resp.json();
+    statusText.textContent = `上次更新：${new Date(intel.generatedAt).toLocaleString("zh-TW")} · 共 ${intel.entries.length} 筆情報`;
+    summaryBox.textContent = intel.summary || "尚無摘要。";
+    renderEntries(intel.entries);
+  } catch (err) {
+    statusText.textContent = "更新失敗，請稍後再試。";
+  } finally {
+    runNowBtn.disabled = false;
+    runNowBtn.textContent = "立即更新";
+  }
+});
+
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>情報訂閱台</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <h1>情報訂閱台</h1>
+      <span class="tag">Intel Subscription Desk</span>
+    </div>
+    <div class="badge">僅收錄可追溯來源連結的情報</div>
+  </header>
+
+  <p class="hint" style="max-width:62ch; margin-bottom:28px;">
+    填一次表單，訂閱您產業的每日新聞與 YouTube 情報監控。不需要申請任何 API 金鑰、不需要 GitHub——訂閱後會拿到一個專屬儀表板連結，之後每天到那個連結查看即可。
+  </p>
+
+  <form class="card" id="subscribeForm">
+    <section>
+      <h2>1. 基本資訊</h2>
+      <p class="hint">用於客製化 AI 分析視角。</p>
+      <div class="row2">
+        <label class="field">
+          <span class="lbl">產業領域</span>
+          <input type="text" id="industry" placeholder="例：不動產投資" required>
+        </label>
+        <label class="field">
+          <span class="lbl">職位 / 部門</span>
+          <input type="text" id="role" placeholder="例：品牌行銷" required>
+        </label>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Google 新聞監控關鍵詞組</h2>
+      <p class="hint">每組請輸入 Google 新聞搜尋語法，可用 AND／OR／引號／減號排除。最多 5 組。</p>
+      <div id="kwGroups">
+        <div class="kw-group"><span class="kw-idx">關鍵詞組 1</span><input type="text" class="kw-input" placeholder="例：不動產 or 收益型資產"></div>
+        <div class="kw-group"><span class="kw-idx">關鍵詞組 2</span><input type="text" class="kw-input" placeholder="選填"></div>
+        <div class="kw-group"><span class="kw-idx">關鍵詞組 3</span><input type="text" class="kw-input" placeholder="選填"></div>
+        <div class="kw-group"><span class="kw-idx">關鍵詞組 4</span><input type="text" class="kw-input" placeholder="選填"></div>
+        <div class="kw-group"><span class="kw-idx">關鍵詞組 5</span><input type="text" class="kw-input" placeholder="選填"></div>
+      </div>
+      <label class="field" style="margin-top:4px;">
+        <span class="lbl">語言 / 地區</span>
+        <select id="localeKey">
+          <option value="zh-TW|TW|TW:zh-Hant">繁體中文（台灣）</option>
+          <option value="zh-CN|CN|CN:zh-Hans">简体中文（中国）</option>
+          <option value="en-US|US|US:en">English（United States）</option>
+          <option value="ja|JP|JP:ja">日本語（日本）</option>
+        </select>
+      </label>
+    </section>
+
+    <section>
+      <h2>3. YouTube 監控標的 <span class="opt">（選填）</span></h2>
+      <p class="hint">頻道請貼網址（支援 /channel/UC… 或 @handle），每行一個；關鍵字每行一個。</p>
+      <label class="field">
+        <span class="lbl">必看頻道</span>
+        <textarea id="ytChannels" placeholder="https://www.youtube.com/@某產業頻道"></textarea>
+      </label>
+      <label class="field">
+        <span class="lbl">搜尋關鍵字</span>
+        <textarea id="ytKeywords" placeholder="老屋翻修&#10;收益型資產"></textarea>
+      </label>
+    </section>
+
+    <section>
+      <h2>4. 每日決策核心欄位</h2>
+      <p class="hint">儀表板每天最需要提供給您的 3 個欄位。</p>
+      <label class="field"><input type="text" class="core-field" id="core1" placeholder="例：即時議題討論熱度"></label>
+      <label class="field"><input type="text" class="core-field" id="core2" placeholder="例：對本公司的商業影響"></label>
+      <label class="field"><input type="text" class="core-field" id="core3" placeholder="例：建議行動方案"></label>
+    </section>
+
+    <button type="submit" class="primary" id="submitBtn" style="margin-top:28px;">訂閱情報</button>
+
+    <div class="result-link" id="resultLink"></div>
+  </form>
+
+  <p class="footline">每筆情報寫入前皆須通過來源連結檢查 — 無連結，不上稿。</p>
+</div>
+
+<script>
+const form = document.getElementById("subscribeForm");
+const submitBtn = document.getElementById("submitBtn");
+const resultLink = document.getElementById("resultLink");
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  submitBtn.disabled = true;
+  submitBtn.textContent = "訂閱中…";
+
+  const keywordGroups = Array.from(document.querySelectorAll(".kw-input"))
+    .map((el) => el.value.trim())
+    .filter(Boolean)
+    .map((query) => ({ query }));
+
+  const ytChannels = document.getElementById("ytChannels").value.split("\n").map((s) => s.trim()).filter(Boolean);
+  const ytKeywords = document.getElementById("ytKeywords").value.split("\n").map((s) => s.trim()).filter(Boolean);
+  const coreFields = ["core1", "core2", "core3"].map((id) => document.getElementById(id).value.trim()).filter(Boolean);
+
+  const payload = {
+    industry: document.getElementById("industry").value.trim(),
+    role: document.getElementById("role").value.trim(),
+    localeKey: document.getElementById("localeKey").value,
+    keywordGroups,
+    ytChannels,
+    ytKeywords,
+    coreFields,
+  };
+
+  try {
+    const resp = await fetch("/api/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) throw new Error("subscribe failed");
+    const data = await resp.json();
+    const dashboardUrl = `${location.origin}/dashboard.html?id=${data.id}`;
+    resultLink.style.display = "block";
+    resultLink.innerHTML = `訂閱成功！您的專屬儀表板連結（請收藏）：<br><a href="${dashboardUrl}">${dashboardUrl}</a>`;
+    submitBtn.textContent = "已訂閱";
+    setTimeout(() => { location.href = dashboardUrl; }, 1500);
+  } catch (err) {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "訂閱情報";
+    resultLink.style.display = "block";
+    resultLink.textContent = "訂閱失敗，請稍後再試。";
+  }
+});
+</script>
+</body>
+</html>
