@@ -236,17 +236,27 @@ export async function analyzeWithGemini(sub, items) {
 
   const prompt = buildPrompt(sub, items);
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-  });
-  if (!resp.ok) {
+  const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] });
+
+  const maxAttempts = 3;
+  let lastError = "";
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      return data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") || "AI 未回傳內容。";
+    }
     const errText = await resp.text().catch(() => "");
-    return `AI 分析失敗（HTTP ${resp.status}）：${errText.slice(0, 200)}`;
+    lastError = `AI 分析失敗（HTTP ${resp.status}）：${errText.slice(0, 200)}`;
+    // 503 是暫時性過載，值得重試；其他錯誤（如金鑰/格式問題）重試也沒用，直接回傳
+    if (resp.status !== 503 || attempt === maxAttempts) break;
+    await new Promise((r) => setTimeout(r, attempt * 2000));
   }
-  const data = await resp.json();
-  return data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") || "AI 未回傳內容。";
+  return lastError;
 }
 
 export { LOCALE_LABELS };
