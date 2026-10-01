@@ -229,7 +229,7 @@ ${ytKwList}
 ${itemsText}`;
 }
 
-export async function analyzeWithGemini(sub, items) {
+export async function analyzeWithGemini(sub, items, { maxAttempts = 3 } = {}) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return "尚未設定 GEMINI_API_KEY，無法產生分析摘要。";
   if (!items.length) return "今日未擷取到任何具備有效來源連結的情報。";
@@ -238,7 +238,6 @@ export async function analyzeWithGemini(sub, items) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
   const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] });
 
-  const maxAttempts = 3;
   let lastError = "";
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const resp = await fetch(url, {
