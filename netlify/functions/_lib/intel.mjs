@@ -235,7 +235,7 @@ export async function analyzeWithGemini(sub, items) {
   if (!items.length) return "今日未擷取到任何具備有效來源連結的情報。";
 
   const prompt = buildPrompt(sub, items);
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${apiKey}`;
   const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] });
 
   const maxAttempts = 3;
