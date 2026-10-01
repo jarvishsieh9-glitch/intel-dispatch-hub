@@ -19,7 +19,7 @@ function asArray(x) {
   return Array.isArray(x) ? x : [x];
 }
 
-async function fetchText(url, timeoutMs = 8000) {
+async function fetchText(url, timeoutMs = 5000) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
   try {
