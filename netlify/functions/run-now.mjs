@@ -20,7 +20,7 @@ export default async (req) => {
   if (!sub) return new Response("Not found", { status: 404 });
 
   const items = await collectItems(sub, { verify: false });
-  const summary = await analyzeWithGemini(sub, items);
+  const summary = await analyzeWithGemini(sub, items, { maxAttempts: 1 });
 
   const result = {
     generatedAt: new Date().toISOString(),
